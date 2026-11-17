@@ -7,6 +7,7 @@ import { fmtCompact, fmtDate, fmtInt } from '../lib/format'
 import { describeDefinition } from '../lib/summary'
 import { Steps } from './Builder'
 import { Icon, Tag } from './ui'
+import { DestLogo } from './DestLogo'
 
 const CADENCE_LABEL: Record<RefreshCadence, string> = { once: 'One-time push', daily: 'Refresh daily', weekly: 'Refresh weekly' }
 const SYNCS_PER_MONTH: Record<RefreshCadence, number> = { once: 1, daily: 30, weekly: 4 }
@@ -114,13 +115,13 @@ export function Activation({ tx, def, reach, existing, segmentId, segmentCode, t
               <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{KIND_LABEL[k]}</div>
               <div className="dest-grid">
                 {DESTINATIONS.filter(d => d.kind === k).map(d => (
-                  <button key={d.id} className={`dest ${d.id in drafts ? 'on' : ''}`} onClick={() => toggle(d.id)}>
-                    <span className="mark" style={{ background: d.color }}>{d.mark}</span>
+                  <button key={d.id} className={`dest ${d.id in drafts ? 'on' : ''}`} onClick={() => toggle(d.id)} aria-pressed={d.id in drafts}>
+                    <DestLogo d={d} size={32} />
                     <span style={{ minWidth: 0 }}>
                       <div className="name">{d.name}</div>
-                      <div className="sub">{d.idType} · min {fmtCompact(d.minReach)}</div>
+                      <div className="sub">{d.kind === 'file' ? 'CSV file of device IDs' : `Min ${fmtCompact(d.minReach)} devices`}</div>
                     </span>
-                    {d.id in drafts && <span style={{ marginLeft: 'auto', color: 'var(--color-accent-hover)' }}><Icon.Check /></span>}
+                    <span className="pick">{d.id in drafts && <Icon.Check />}</span>
                   </button>
                 ))}
               </div>
@@ -133,7 +134,7 @@ export function Activation({ tx, def, reach, existing, segmentId, segmentCode, t
               <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
                 {chosen.map((d, i) => (
                   <div key={d.id} className="dest-config" style={i ? { borderTop: '1px solid var(--color-border-medium)' } : undefined}>
-                    <div className="who"><span className="mark" style={{ background: d.color }}>{d.mark}</span><b>{d.name}</b></div>
+                    <div className="who"><DestLogo d={d} size={28} /><b>{d.name}</b></div>
                     <div className="field">
                       <label>{d.accountLabel}</label>
                       <input className="input" placeholder={d.accountPlaceholder} value={drafts[d.id].accountId} onChange={e => set(d.id, { accountId: e.target.value })} />

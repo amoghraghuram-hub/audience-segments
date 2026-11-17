@@ -6,6 +6,7 @@ import { DESTINATIONS, type Destination } from '../lib/destinations'
 import { fmtCompact, fmtDate, fmtDateTime, fmtInt, timeAgo } from '../lib/format'
 import { describeDefinition } from '../lib/summary'
 import { Icon, Tag } from './ui'
+import { DestLogo } from './DestLogo'
 
 const STATUS_TONE: Record<SavedSegment['status'], string> = { draft: '', ready: 'teal', scheduled: 'blue', syncing: 'yellow', active: 'green', expired: 'gray' }
 const CADENCE: Record<Activation['cadence'], string> = { once: 'One-time push', daily: 'Daily', weekly: 'Weekly' }
@@ -85,7 +86,7 @@ export function Results({ tx, segment, onBack, onEdit, onManage }: {
             <tbody>
               {rows.map(r => (
                 <tr key={r.d.id}>
-                  <td><div className="who"><span className="mark" style={{ background: r.d.color }}>{r.d.mark}</span><div><div className="seg-name">{r.d.name}</div><div className="seg-code">{r.d.accountLabel} {r.a.accountId}</div></div></div></td>
+                  <td><div className="who"><DestLogo d={r.d} size={28} /><div><div className="seg-name">{r.d.name}</div><div className="seg-code">{r.d.accountLabel} {r.a.accountId}</div></div></div></td>
                   <td>{s.status === 'expired' ? <Tag tone="gray">Stopped</Tag> : r.a.status === 'queued' ? <Tag tone="blue">Scheduled</Tag> : <Tag tone={r.a.status === 'active' ? 'green' : r.a.status === 'failed' ? 'red' : 'yellow'}>{cap(r.a.status)}</Tag>}</td>
                   <td className="num">{r.last ? fmtInt(r.last.matched) : '—'}{r.d.kind === 'file' && r.last && <div className="delta">exported in full</div>}{r.d.kind !== 'file' && r.last && r.prev && <div className={`delta ${r.last.matched >= r.prev.matched ? 'up' : 'down'}`}>{r.last.matched >= r.prev.matched ? '+' : '−'}{fmtInt(Math.abs(r.last.matched - r.prev.matched))} since last sync</div>}</td>
                   <td>{r.d.kind === 'file' ? <span className="faint">Not applicable</span> : r.rate !== null ? <div className="rate"><span className="num">{pct(r.rate)}</span><div className="bar"><i className={r.rate < 0.5 ? 'low' : ''} style={{ width: `${Math.min(100, r.rate * 100)}%` }} /></div></div> : '—'}</td>
