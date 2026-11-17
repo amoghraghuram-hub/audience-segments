@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { loadTaxonomy, type Taxonomy } from './lib/taxonomy'
-import { emptyDefinition, hasEnded, nextSyncAt, normalize, startsLater, syncHistory, uid, type Activation as ActivationT, type AudienceDefinition, type Campaign, type SavedSegment } from './lib/model'
+import { emptyDefinition, nextSyncAt, normalize, syncHistory, uid, type Activation as ActivationT, type AudienceDefinition, type SavedSegment } from './lib/model'
 import { estimateReach } from './lib/reach'
 import { loadSegments, saveSegments } from './lib/storage'
 import { Shell } from './components/Shell'
@@ -12,7 +12,6 @@ import { Results } from './components/Results'
 import { Toast, Icon } from './components/ui'
 import { DESTINATIONS } from './lib/destinations'
 import { HOME_COUNTRY } from './lib/geo'
-import { fmtDate, localDay } from './lib/format'
 
 type View = { name: 'list' } | { name: 'builder' } | { name: 'activate' } | { name: 'results' }
 
@@ -35,14 +34,14 @@ function record(a: ActivationT, at: string, sent: number): ActivationT {
   return { ...a, lastSyncAt: at, matchedReach: matched, history: [...past, { at, sent, matched }] }
 }
 
-/** Runs any refreshes that have come due on a live segment, one per daily or weekly interval, up to the campaign end. */
+/** Runs any monthly refreshes that have come due on a live segment. */
 function refresh(s: SavedSegment): SavedSegment {
   if (s.status !== 'active') return s
   let changed = false
   const activations = s.activations.map(a => {
     let cur = a
     for (let guard = 0; guard < 120; guard++) {
-      const due = nextSyncAt(cur, s.campaign)
+      const due = nextSyncAt(cur)
       if (!due || due.getTime() > Date.now()) break
       cur = record(cur, due.toISOString(), s.estimatedReach); changed = true
     }
@@ -51,20 +50,10 @@ function refresh(s: SavedSegment): SavedSegment {
   return changed ? { ...s, activations } : s
 }
 
-/**
- * Moves a segment along its campaign dates: a scheduled one goes live on its start date, and a live or scheduled one
- * expires after its end date. In production the activation service does this on the dates themselves.
- */
-function advance(s: SavedSegment): SavedSegment {
-  if (hasEnded(s.campaign) && (s.status === 'active' || s.status === 'syncing' || s.status === 'scheduled')) return { ...s, status: 'expired' }
-  if (s.status === 'scheduled' && !startsLater(s.campaign)) return refresh(synced(s, s.campaign?.start ? localDay(s.campaign.start).toISOString() : new Date().toISOString()))
-  return refresh(s)
-}
-
 export default function App() {
   const [tx, setTx] = useState<Taxonomy | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [segments, setSegments] = useState<SavedSegment[]>(() => loadSegments().map(advance))
+  const [segments, setSegments] = useState<SavedSegment[]>(() => loadSegments().map(refresh))
   const [view, setView] = useState<View>({ name: 'list' })
   const [showSources, setShowSources] = useState(false)
   const [current, setCurrent] = useState<SavedSegment | null>(null)
@@ -72,9 +61,9 @@ export default function App() {
 
   useEffect(() => { loadTaxonomy().then(setTx).catch(e => setError(String(e))) }, [])
   useEffect(() => { saveSegments(segments) }, [segments])
-  // re-check campaign dates while the app stays open, so a start or end date that arrives is acted on without a reload
+  // run due refreshes while the app stays open, so a sync that comes due shows up without a reload
   useEffect(() => {
-    const t = setInterval(() => setSegments(list => { const next = list.map(advance); return next.some((s, i) => s !== list[i]) ? next : list }), 60_000)
+    const t = setInterval(() => setSegments(list => { const next = list.map(refresh); return next.some((s, i) => s !== list[i]) ? next : list }), 60_000)
     return () => clearInterval(t)
   }, [])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3500); return () => clearTimeout(t) }, [toast])
@@ -94,7 +83,7 @@ export default function App() {
   }
   const open = (s: SavedSegment) => { setCurrent(s); setView({ name: 'builder' }) }
   const openResults = (s: SavedSegment) => { setCurrent(s); setView({ name: 'results' }) }
-  /** A copy starts as an unsaved draft: same rules and geography, but no activations, segment ID, campaign or conversation. */
+  /** A copy starts as an unsaved draft: same rules and geography, but no activations, segment ID or conversation. */
   const duplicate = (s: SavedSegment) => {
     const copyDef: AudienceDefinition = {
       ...s.definition, name: `${s.definition.name} (copy)`,
@@ -113,21 +102,13 @@ export default function App() {
     setCurrent(s); upsert(s); return s
   }
 
-  const activate = (acts: ActivationT[], segmentCode: string, campaign: Campaign | undefined) => {
-    const names = acts.map(a => DESTINATIONS.find(d => d.id === a.destinationId)!.name).join(', ')
-    if (startsLater(campaign)) {
-      // nothing is sent until the start date; the segment waits as scheduled
-      const held = persist({ segmentCode, campaign, activations: acts.map(a => ({ ...a, status: 'queued', lastSyncAt: undefined, matchedReach: undefined })), status: 'scheduled' })
-      setView({ name: 'list' })
-      setToast(`Scheduled “${held.definition.name}” to start on ${fmtDate(campaign!.start!)} on ${names}`)
-      return
-    }
-    const s = persist({ segmentCode, campaign, activations: acts.map(a => ({ ...a, status: 'syncing' })), status: 'syncing' })
+  const activate = (acts: ActivationT[], segmentCode: string, plannedImpressions: number | undefined) => {
+    const s = persist({ segmentCode, plannedImpressions, activations: acts.map(a => ({ ...a, status: 'syncing' })), status: 'syncing' })
     setView({ name: 'list' })
     setToast(`Activating “${s.definition.name}” as ${segmentCode} to ${acts.map(a => DESTINATIONS.find(d => d.id === a.destinationId)!.name).join(', ')}`)
     // Simulate the sync completing. In production this is driven by webhook/status polling from the activation service.
     setTimeout(() => {
-      // only if it is still mid-sync: it may have been rescheduled, expired or deleted in the meantime
+      // only if it is still mid-sync: it may have been re-activated or deleted in the meantime
       setSegments(list => list.map(x => x.id === s.id && x.status === 'syncing' ? synced(x, new Date().toISOString()) : x))
       setToast(`“${s.definition.name}” is live on ${acts.length} destination${acts.length === 1 ? '' : 's'}`)
     }, 4000)
@@ -156,7 +137,7 @@ export default function App() {
         )}
         {view.name === 'activate' && current && (
           <Activation tx={tx} def={current.definition} reach={current.estimatedReach} existing={current.activations}
-            segmentId={current.id} segmentCode={current.segmentCode} campaign={current.campaign}
+            segmentId={current.id} segmentCode={current.segmentCode} plannedImpressions={current.plannedImpressions}
             takenCodes={segments.filter(s => s.id !== current.id && s.segmentCode).map(s => s.segmentCode!)}
             onBack={() => setView({ name: 'builder' })} onActivate={activate} />
         )}

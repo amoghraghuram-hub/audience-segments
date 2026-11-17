@@ -26,12 +26,12 @@ export interface AudienceDefinition {
   exclude: Condition[]
 }
 
-export type RefreshCadence = 'once' | 'daily' | 'weekly'
 
 export interface Activation {
   destinationId: string
   accountId: string
-  cadence: RefreshCadence
+  /** monthly refresh unless set; older saved activations have none and count as monthly */
+  delivery?: Delivery
   status: 'queued' | 'syncing' | 'active' | 'failed'
   lastSyncAt?: string
   matchedReach?: number
@@ -48,14 +48,19 @@ export interface SyncEvent {
   matched: number
 }
 
-const CADENCE_DAYS: Record<RefreshCadence, number | null> = { once: null, daily: 1, weekly: 7 }
+/**
+ * How a channel is kept up to date. Segments are rebuilt once a month over a rolling 90-day lookback, and that
+ * schedule is fixed. The only choice is whether a channel keeps receiving each rebuild or gets the audience once.
+ */
+export type Delivery = 'monthly' | 'once'
+export const DELIVERY_LABEL: Record<Delivery, string> = { monthly: 'Monthly refresh', once: 'One-time push' }
+export const deliveryOf = (a: Activation): Delivery => a.delivery ?? 'monthly'
 
-/** When this destination is next due a refresh, or null if it will not sync again. */
-export function nextSyncAt(a: Activation, campaign?: Campaign): Date | null {
-  const days = CADENCE_DAYS[a.cadence]
-  if (!days || !a.lastSyncAt || a.status !== 'active') return null
-  const next = new Date(Date.parse(a.lastSyncAt) + days * 864e5)
-  if (campaign?.end && next.toISOString().slice(0, 10) > campaign.end) return null
+/** When this channel is next due its monthly refresh, or null if it is not live or was a one-time push. */
+export function nextSyncAt(a: Activation): Date | null {
+  if (!a.lastSyncAt || a.status !== 'active' || deliveryOf(a) === 'once') return null
+  const next = new Date(a.lastSyncAt)
+  next.setMonth(next.getMonth() + 1)
   return next
 }
 
@@ -65,35 +70,7 @@ export function syncHistory(a: Activation, fallbackSent: number): SyncEvent[] {
   return a.lastSyncAt && a.matchedReach !== undefined ? [{ at: a.lastSyncAt, sent: fallbackSent, matched: a.matchedReach }] : []
 }
 
-export type SegmentStatus = 'draft' | 'ready' | 'scheduled' | 'syncing' | 'active' | 'expired'
-
-/** When the campaign runs. Syncing stops and the audience is removed from destinations after `end`. */
-export interface Campaign {
-  /** ISO dates, yyyy-mm-dd */
-  start?: string
-  end?: string
-  /** planned impressions, used only for sizing advice */
-  impressions?: number
-}
-
-/** Today's calendar day (yyyy-mm-dd) where the viewer is, so a campaign starts and ends on their local date. */
-export const todayIso = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/** A campaign whose start date is still ahead, so nothing is sent yet. */
-export const startsLater = (c?: Campaign) => !!c?.start && c.start > todayIso()
-
-/** A campaign whose end date has passed. */
-export const hasEnded = (c?: Campaign) => !!c?.end && c.end < todayIso()
-
-/** Whole days from start (or today, if it has started or has no start) to end, inclusive. Null without an end date. */
-export function campaignDays(c?: Campaign): number | null {
-  if (!c?.end) return null
-  const from = c.start && c.start > todayIso() ? c.start : todayIso()
-  return Math.max(0, Math.round((Date.parse(c.end) - Date.parse(from)) / 864e5) + 1)
-}
+export type SegmentStatus = 'draft' | 'ready' | 'syncing' | 'active'
 
 export interface SavedSegment {
   id: string
@@ -103,7 +80,8 @@ export interface SavedSegment {
   brief?: BriefSession
   /** The ID a buyer searches for inside each destination. Set at first activation, then fixed. */
   segmentCode?: string
-  campaign?: Campaign
+  /** planned impressions for the campaign, used only for a sizing check at activation */
+  plannedImpressions?: number
   estimatedReach: number
   status: SegmentStatus
   activations: Activation[]

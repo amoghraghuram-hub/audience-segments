@@ -5,20 +5,6 @@ export function fmtCompact(n: number): string {
   return String(n)
 }
 export const fmtInt = (n: number) => n.toLocaleString('en-US')
-/**
- * A calendar day (yyyy-mm-dd) as midnight in the viewer's own time zone. `new Date('2026-12-01')` would read it as
- * UTC and show the previous day to anyone west of Greenwich, which is every US viewer.
- */
-export function localDay(day: string): Date {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-/** Formats a timestamp, or a calendar day without shifting it across time zones. */
-export function fmtDate(iso: string) {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? localDay(iso) : new Date(iso)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 export function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }

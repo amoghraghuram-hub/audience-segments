@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import type { Activation, SavedSegment, SyncEvent } from '../lib/model'
-import { nextSyncAt, syncHistory } from '../lib/model'
+import { DELIVERY_LABEL, deliveryOf, nextSyncAt, syncHistory } from '../lib/model'
 import type { Taxonomy } from '../lib/taxonomy'
 import { DESTINATIONS, type Destination } from '../lib/destinations'
-import { fmtCompact, fmtDate, fmtDateTime, fmtInt, timeAgo } from '../lib/format'
+import { fmtCompact, fmtDateTime, fmtInt, timeAgo } from '../lib/format'
 import { describeDefinition } from '../lib/summary'
 import { Icon, Tag } from './ui'
 import { DestLogo } from './DestLogo'
 
-const STATUS_TONE: Record<SavedSegment['status'], string> = { draft: '', ready: 'teal', scheduled: 'blue', syncing: 'yellow', active: 'green', expired: 'gray' }
-const CADENCE: Record<Activation['cadence'], string> = { once: 'One-time push', daily: 'Daily', weekly: 'Weekly' }
+const STATUS_TONE: Record<SavedSegment['status'], string> = { draft: '', ready: 'teal', syncing: 'yellow', active: 'green' }
 const pct = (f: number) => (f * 100).toFixed(f >= 0.1 ? 0 : 1) + '%'
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
@@ -31,7 +30,7 @@ export function Results({ tx, segment, onBack, onEdit, onManage }: {
       : last.matched < d.minReach ? `Devices reachable on ${d.name} are below its minimum of ${fmtInt(d.minReach)}, so it may not deliver.`
       : rate !== null && rate < 0.5 ? 'Fewer than half the devices are reachable on this channel. Check the account ID and that the channel accepts mobile ad IDs.'
       : null
-    return { a, d, history, last, prev, rate, next: live ? nextSyncAt(a, s.campaign) : null, issue }
+    return { a, d, history, last, prev, rate, next: live ? nextSyncAt(a) : null, issue }
   })
   const synced = rows.filter(r => r.last)
   // file exports are not matched against anyone's users, so they are left out of the average
@@ -57,8 +56,8 @@ export function Results({ tx, segment, onBack, onEdit, onManage }: {
             <h1>{s.definition.name} <Tag tone={STATUS_TONE[s.status]}><span className={`status-dot ${s.status}`} />{cap(s.status)}</Tag></h1>
             <p>{describeDefinition(tx, s.definition)}</p>
             <div className="results-meta">
+              <span>Rebuilt monthly, over a 90-day lookback</span>
               {s.segmentCode && <span>Segment ID <span className="mono">{s.segmentCode}</span> <button className="btn sm ghost" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button></span>}
-              {(s.campaign?.start || s.campaign?.end) && <span>Campaign {s.campaign.start ? fmtDate(s.campaign.start) : 'from activation'} to {s.campaign.end ? fmtDate(s.campaign.end) : 'open-ended'}</span>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -67,33 +66,31 @@ export function Results({ tx, segment, onBack, onEdit, onManage }: {
           </div>
         </div>
 
-        {s.status === 'scheduled' && <div className="callout" style={{ marginBottom: 16 }}>Scheduled to start on {s.campaign?.start ? fmtDate(s.campaign.start) : 'its start date'}. Nothing has been sent yet, so there are no results to show.</div>}
         {s.status === 'syncing' && <div className="callout" style={{ marginBottom: 16 }}>The first sync is running. Results appear here as each destination finishes.</div>}
-        {s.status === 'expired' && <div className="callout warn" style={{ marginBottom: 16 }}>The campaign ended{s.campaign?.end ? ` on ${fmtDate(s.campaign.end)}` : ''}. Syncing has stopped and the audience has been removed from its destinations. The figures below are the final ones.</div>}
         {issues.map(r => <div key={r.d.id} className="callout warn" style={{ marginBottom: 12 }}><b>{r.d.name}.</b> {r.issue}</div>)}
 
         <div className="stats">
           <div className="card stat"><div className="label">Devices sent</div><div className="value num">{fmtCompact(s.estimatedReach)}</div><div className="sub">estimated audience size</div></div>
           <div className="card stat"><div className="label">Most reachable</div><div className="value num">{best ? fmtCompact(best.last!.matched) : '—'}</div><div className="sub">{best ? `on ${best.d.name}` : synced.length ? 'file exports hand over every device' : 'no sync yet'}</div></div>
           <div className="card stat"><div className="label">Average share reachable</div><div className="value num">{avgRate !== null ? pct(avgRate) : '—'}</div><div className="sub">{matchable.length ? `across ${matchable.length} destination${matchable.length === 1 ? '' : 's'}` : synced.length ? 'file exports hand over every device' : 'no sync yet'}</div></div>
-          <div className="card stat"><div className="label">Last sync</div><div className="value">{lastSync ? timeAgo(lastSync) : '—'}</div><div className="sub">{nextSync ? `next ${fmtDateTime(nextSync.toISOString())}` : live ? 'no further syncs due' : 'not syncing'}</div></div>
+          <div className="card stat"><div className="label">Last sync</div><div className="value">{lastSync ? timeAgo(lastSync) : '—'}</div><div className="sub">{nextSync ? `next ${fmtDateTime(nextSync.toISOString())}` : live ? 'sent once, no refresh due' : 'not syncing'}</div></div>
         </div>
 
         <h3 style={{ margin: '4px 0 8px' }}>By destination</h3>
         <div className="card table-wrap" style={{ marginBottom: 20 }}>
           <table className="list results-table">
-            <thead><tr><th>Destination</th><th>Status</th><th>Reachable on channel</th><th>Share reachable</th><th>Trend</th><th>Refresh</th><th>Last sync</th><th>Next sync</th></tr></thead>
+            <thead><tr><th>Destination</th><th>Status</th><th>Reachable on channel</th><th>Share reachable</th><th>Trend</th><th>Delivery</th><th>Last sync</th><th>Next sync</th></tr></thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.d.id}>
                   <td><div className="who"><DestLogo d={r.d} size={28} /><div><div className="seg-name">{r.d.name}</div><div className="seg-code">{r.d.accountLabel} {r.a.accountId}</div></div></div></td>
-                  <td>{s.status === 'expired' ? <Tag tone="gray">Stopped</Tag> : r.a.status === 'queued' ? <Tag tone="blue">Scheduled</Tag> : <Tag tone={r.a.status === 'active' ? 'green' : r.a.status === 'failed' ? 'red' : 'yellow'}>{cap(r.a.status)}</Tag>}</td>
+                  <td><Tag tone={r.a.status === 'active' ? 'green' : r.a.status === 'failed' ? 'red' : 'yellow'}>{cap(r.a.status)}</Tag></td>
                   <td className="num">{r.last ? fmtInt(r.last.matched) : '—'}{r.d.kind === 'file' && r.last && <div className="delta">exported in full</div>}{r.d.kind !== 'file' && r.last && r.prev && <div className={`delta ${r.last.matched >= r.prev.matched ? 'up' : 'down'}`}>{r.last.matched >= r.prev.matched ? '+' : '−'}{fmtInt(Math.abs(r.last.matched - r.prev.matched))} since last sync</div>}</td>
                   <td>{r.d.kind === 'file' ? <span className="faint">Not applicable</span> : r.rate !== null ? <div className="rate"><span className="num">{pct(r.rate)}</span><div className="bar"><i className={r.rate < 0.5 ? 'low' : ''} style={{ width: `${Math.min(100, r.rate * 100)}%` }} /></div></div> : '—'}</td>
                   <td><Spark history={r.history} peak={peak} /></td>
-                  <td className="muted">{CADENCE[r.a.cadence]}</td>
+                  <td className="muted">{DELIVERY_LABEL[deliveryOf(r.a)]}</td>
                   <td className="muted">{r.last ? fmtDateTime(r.last.at) : '—'}</td>
-                  <td className="muted">{r.next ? fmtDateTime(r.next.toISOString()) : s.status === 'expired' ? 'Stopped' : r.a.cadence === 'once' ? 'None' : r.a.status === 'queued' ? (s.campaign?.start ? fmtDate(s.campaign.start) : '—') : '—'}</td>
+                  <td className="muted">{r.next ? fmtDateTime(r.next.toISOString()) : deliveryOf(r.a) === 'once' && r.last ? 'None, sent once' : '—'}</td>
                 </tr>
               ))}
             </tbody>

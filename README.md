@@ -11,7 +11,7 @@ Spec and change log: [docs/SPEC.md](docs/SPEC.md). Section 14 lists everything b
 - **Geography.** United States only, filtered by state and city.
 - **Reach panel.** Estimated reach, a size status (too small, narrow, healthy, very broad), and what each requirement costs in reach.
 - **Sensitive-place policy.** Restricted kinds of place cannot be used; others are flagged for care.
-- **Activation.** Destinations, a unique segment ID, campaign start and end dates with scheduling and auto-expiry, and a refresh schedule.
+- **Activation.** Channels with their logos, a unique segment ID, a choice per channel between monthly refresh and a one-time push, and an optional planned-impressions check.
 - **Results.** Per channel: devices reachable, share reachable, sync history and next sync.
 - **List.** Duplicate and delete segments.
 
@@ -46,7 +46,7 @@ Converts the CSV into `public/data/taxonomy.json` (country, then type, then `[se
 
 - `src/components/Builder.tsx`: sentence builder, with `BriefAssistant.tsx`, `SegmentPicker.tsx`, `GeoPicker.tsx` and `ReachPanel.tsx`
 - `src/components/Activation.tsx`, `Results.tsx`, `SegmentList.tsx`
-- `src/lib/model.ts`: segment, rule, campaign and activation types
+- `src/lib/model.ts`: segment, rule and activation types
 - `src/lib/reach.ts`: reach estimate, size status and funnel
 - `src/lib/geo.ts`: US states and cities
 - `src/lib/sensitive.ts`: sensitive-place policy

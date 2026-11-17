@@ -120,7 +120,7 @@ export function ReachPanel({ tx, def }: { tx: Taxonomy; def: AudienceDefinition 
       )}
 
       <div className="hint" style={{ marginTop: 'auto' }}>
-        Reach is modelled from segment sizes in catalogue {tx.version} and assumes segments overlap independently. Bars and the size scale are logarithmic. The exact count is computed when you save and is refreshed with every sync.
+        Reach is modelled from segment sizes in catalogue {tx.version} and assumes segments overlap independently. Bars and the size scale are logarithmic. The exact count is computed when you save, and the segment is rebuilt once a month.
       </div>
     </>
   )

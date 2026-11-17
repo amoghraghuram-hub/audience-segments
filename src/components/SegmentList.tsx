@@ -2,20 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import type { SavedSegment } from '../lib/model'
 import type { Taxonomy } from '../lib/taxonomy'
 import { DESTINATIONS } from '../lib/destinations'
-import { fmtCompact, fmtDate, timeAgo } from '../lib/format'
+import { fmtCompact, timeAgo } from '../lib/format'
 import { describeDefinition, placeLabel } from '../lib/summary'
 import { Tag, Icon } from './ui'
 import { DestLogo } from './DestLogo'
 
-const STATUS_TONE: Record<SavedSegment['status'], string> = { draft: '', ready: 'teal', scheduled: 'blue', syncing: 'yellow', active: 'green', expired: 'gray' }
+const STATUS_TONE: Record<SavedSegment['status'], string> = { draft: '', ready: 'teal', syncing: 'yellow', active: 'green' }
 
-type Filter = 'all' | 'live' | 'scheduled' | 'draft' | 'expired'
+type Filter = 'all' | 'live' | 'draft'
 const FILTERS: { id: Filter; label: string; match: (s: SavedSegment) => boolean }[] = [
   { id: 'all', label: 'All', match: () => true },
   { id: 'live', label: 'Active', match: s => s.status === 'active' || s.status === 'syncing' },
-  { id: 'scheduled', label: 'Scheduled', match: s => s.status === 'scheduled' },
   { id: 'draft', label: 'Drafts', match: s => s.status === 'draft' || s.status === 'ready' },
-  { id: 'expired', label: 'Expired', match: s => s.status === 'expired' },
 ]
 
 const cap = (s: string) => s === 'the United States' ? 'United States' : s
@@ -93,16 +91,13 @@ export function SegmentList({ tx, segments, onNew, onOpen, onDelete, onDuplicate
                   <td className="num">~{fmtCompact(s.estimatedReach).toLowerCase()}</td>
                   <td>
                     <Tag tone={STATUS_TONE[s.status]}><span className={`status-dot ${s.status}`} />{s.status[0].toUpperCase() + s.status.slice(1)}</Tag>
-                    {s.status === 'scheduled' && s.campaign?.start
-                      ? <div className="seg-code">Starts {fmtDate(s.campaign.start)}</div>
-                      : s.campaign?.end && <div className="seg-code">{s.status === 'expired' ? 'Ended' : 'Ends'} {fmtDate(s.campaign.end)}</div>}
                   </td>
                   <td>
                     <div className="dest-marks">
                       {s.activations.length === 0 && <span className="faint">—</span>}
                       {s.activations.map(a => {
                         const d = DESTINATIONS.find(x => x.id === a.destinationId)!
-                        return <DestLogo key={a.destinationId} d={d} size={24} waiting={a.status === 'queued'} title={`${d.name} · ${a.status === 'queued' && s.status === 'scheduled' ? 'scheduled' : a.status}`} />
+                        return <DestLogo key={a.destinationId} d={d} size={24} waiting={a.status === 'queued'} title={`${d.name} · ${a.status}`} />
                       })}
                     </div>
                   </td>

@@ -257,7 +257,7 @@ table.list tr.row:hover td { background: var(--color-bg-quarternary); cursor: po
 .dest .mark { width: 32px; height: 32px; font-size: 11px; flex-shrink: 0; }
 .dest .name { font-weight: 500; }
 .dest .sub { font-size: 11px; color: var(--color-text-tertiary); }
-.dest-config { padding: 14px 16px; display: grid; grid-template-columns: auto 1fr 150px auto; gap: 12px; align-items: end; }
+.dest-config { padding: 14px 16px; display: grid; grid-template-columns: 220px 1fr auto; gap: 12px; align-items: end; }
 .dest-config .who { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; }
 .dest-config .who .mark { width: 28px; height: 28px; font-size: 10px; }
 .review-list { display: flex; flex-direction: column; gap: 10px; }
@@ -444,9 +444,9 @@ table.list td:first-child { width: 40%; max-width: 0; }
 .callout.danger { background: var(--color-tag-bg-red); border-color: #f0b8b8; color: var(--color-tag-text-red); }
 
 /* ---------- Campaign dates ---------- */
-.campaign { padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.planned { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.planned .input { max-width: 260px; }
 .status-dot.expired { background: var(--color-text-quarternary); }
-@media (max-width: 900px) { .campaign { grid-template-columns: 1fr; } }
 
 .status-dot.scheduled { background: #3b6fd6; }
 .mark.waiting { opacity: .45; }
@@ -753,3 +753,11 @@ table.list tr.row:hover td { background: var(--color-hover); }
 
 /* the brief box is the second, optional way in: it sits under the sentence, set apart from it */
 .builder-center .assist, .builder-center .assist-collapsed { margin-top: 6px; }
+
+/* ---------- Two-option toggle, as the console's Light / Dark switch ---------- */
+.seg-toggle { display: inline-flex; padding: 3px; height: 36px; border: 1px solid var(--color-border-medium); border-radius: 8px; background: var(--color-bg-quarternary); white-space: nowrap; }
+.seg-toggle button { height: 100%; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-tertiary); font-size: 13px; font-weight: 500; cursor: pointer; }
+.seg-toggle button:hover { color: var(--color-text-primary); }
+.seg-toggle button.on { background: var(--color-accent-surface-quarternary); color: var(--color-accent-primary); }
+.dest-config { grid-template-columns: 200px minmax(160px, 1fr) auto auto; }
+@media (max-width: 900px) { .dest-config { grid-template-columns: 1fr; } }

@@ -5,9 +5,20 @@ const KEY = 'factori.audienceStudio.segments.v1'
 export function loadSegments(): SavedSegment[] {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as SavedSegment[]
+    if (raw) return (JSON.parse(raw) as LegacySegment[]).map(upgrade)
   } catch { /* storage unavailable: fall through to seed */ }
   return seed()
+}
+
+/** A segment as saved by an earlier version, which had campaign dates and the scheduled and expired states. */
+type LegacySegment = Omit<SavedSegment, 'status'> & { status: SavedSegment['status'] | 'scheduled' | 'expired'; campaign?: { impressions?: number } }
+
+/** Campaign dates and the refresh setting were removed: a scheduled segment goes back to ready to activate, and an expired one is simply active again. */
+function upgrade({ campaign, ...s }: LegacySegment): SavedSegment {
+  const status = s.status === 'scheduled' ? 'ready' : s.status === 'expired' ? 'active' : s.status
+  // daily and weekly refresh no longer exist: anything that was not a one-time push is now a monthly refresh
+  const activations = s.status === 'scheduled' ? [] : s.activations.map(({ cadence, ...a }: SavedSegment['activations'][number] & { cadence?: string }) => (cadence === 'once' ? { ...a, delivery: 'once' as const } : a))
+  return { ...s, status, activations, plannedImpressions: s.plannedImpressions ?? campaign?.impressions }
 }
 
 export function saveSegments(list: SavedSegment[]) {
@@ -19,7 +30,7 @@ function seed(): SavedSegment[] {
   return [
     {
       id: 'seed-1', source: 'offline_behaviour', status: 'active', estimatedReach: 457_000, segmentCode: 'FCT_USA_GYM_GOERS_WHO_SHOP_AT_TARGET_ED01',
-      createdAt: d(12), updatedAt: d(2),
+      createdAt: d(34), updatedAt: d(2),
       definition: {
         name: 'Gym-goers who shop at Target', country: 'USA', geo: { states: [], cities: [] },
         include: [
@@ -29,8 +40,8 @@ function seed(): SavedSegment[] {
         exclude: [],
       },
       activations: [
-        { destinationId: 'ttd', accountId: '8f2k3jd', cadence: 'weekly', status: 'active', lastSyncAt: d(2), matchedReach: 388_410, history: [{ at: d(9), sent: 451_200, matched: 383_500 }, { at: d(2), sent: 457_000, matched: 388_410 }] },
-        { destinationId: 'meta', accountId: 'act_2210098', cadence: 'weekly', status: 'active', lastSyncAt: d(2), matchedReach: 301_200, history: [{ at: d(9), sent: 451_200, matched: 296_900 }, { at: d(2), sent: 457_000, matched: 301_200 }] },
+        { destinationId: 'ttd', accountId: '8f2k3jd', status: 'active', lastSyncAt: d(2), matchedReach: 388_410, history: [{ at: d(32), sent: 451_200, matched: 383_500 }, { at: d(2), sent: 457_000, matched: 388_410 }] },
+        { destinationId: 'meta', accountId: 'act_2210098', status: 'active', lastSyncAt: d(2), matchedReach: 301_200, history: [{ at: d(32), sent: 451_200, matched: 296_900 }, { at: d(2), sent: 457_000, matched: 301_200 }] },
       ],
     },
     {
