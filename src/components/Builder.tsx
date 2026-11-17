@@ -13,7 +13,7 @@ import { SegmentPicker, type Selections } from './SegmentPicker'
 import { GeoPicker } from './GeoPicker'
 import { BriefAssistant } from './BriefAssistant'
 import { ReachPanel } from './ReachPanel'
-import { Icon, Tag } from './ui'
+import { Icon } from './ui'
 
 type PickerTarget = { groupId: string | 'exclude'; conditionId?: string; type?: SegmentType }
 
@@ -95,25 +95,11 @@ export function Builder({ tx, def, onChange, onBack, onSaveDraft, onContinue, br
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="builder" style={{ flex: 1, minHeight: 0 }}>
-        <aside className="builder-left">
-          <Steps current={1} />
-          <div className="field">
-            <label>Lookback window</label>
-            <select className="select" value="90" disabled><option value="90">Last 90 days</option></select>
-            <span className="hint">All offline segments use a rolling 90-day observation window and refresh daily.</span>
-          </div>
-          <div className="field">
-            <label>Source</label>
-            <div><Tag tone="teal">Offline behaviour</Tag> <span className="faint" style={{ marginLeft: 6 }}>catalogue {tx.version}</span></div>
-          </div>
-          {onResults && <button className="btn" onClick={onResults} style={{ justifyContent: 'center' }}><Icon.Chart /> View results</button>}
-          {!hasOffline(tx, def.country) && <div className="callout warn">No offline behaviour segments are available for this country yet.</div>}
-          <div className="callout" style={{ marginTop: 'auto' }}>
-            <b>How to read the sentence</b><br />“or” widens the audience, “and who” narrows it, “excluding” removes devices last. Click any highlighted part to change it. Click a verb such as “visited” to flip it to “have not visited”.
-          </div>
-        </aside>
-
         <section className="builder-center">
+          <div className="builder-top">
+            <Steps current={1} />
+            {onResults && <button className="btn" onClick={onResults}><Icon.Chart /> View results</button>}
+          </div>
           <div className="seg-title">
             <label htmlFor="segment-name">Segment name</label>
             <input id="segment-name" className="seg-title-input" placeholder={suggested || 'Untitled segment'} value={def.name} onChange={e => update({ name: e.target.value })} autoComplete="off" />
@@ -132,6 +118,11 @@ export function Builder({ tx, def, onChange, onBack, onSaveDraft, onContinue, br
               onEdit={(groupId, c) => setPicker({ groupId, conditionId: c.id, type: c.type })}
               onToggleNegate={toggleNegate} onRemoveCondition={removeCondition} onRemoveGroup={removeGroup} onAddGroup={addGroup} />
           </div>
+
+          <div className="hint sentence-help">
+            “or” widens the audience, “and who” narrows it, and “excluding” removes devices last. Click any part to change it, or click a verb such as “visited” to flip it to “have not visited”.
+          </div>
+          {!hasOffline(tx, def.country) && <div className="callout warn">No offline behaviour segments are available for this country yet.</div>}
 
           {restricted.length > 0 && (
             <div className="callout danger" role="alert">
