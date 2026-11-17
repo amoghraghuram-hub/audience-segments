@@ -54,7 +54,7 @@ function mergeIntoEdited(def: AudienceDefinition, prev: Plan, next: Plan): Audie
 
 /**
  * The campaign brief box inside the builder. A brief, or a follow-up, is planned into rules and written straight
- * into the sentence below, where every part stays editable by hand. Both ways of building work on the same audience.
+ * into the sentence above it, where every part stays editable by hand. Both ways of building work on the same audience.
  */
 export function BriefAssistant({ tx, def, onApply, session, onSession }: {
   tx: Taxonomy; def: AudienceDefinition; onApply: (next: AudienceDefinition) => void
@@ -126,7 +126,7 @@ export function BriefAssistant({ tx, def, onApply, session, onSession }: {
     return (
       <button className="assist-collapsed" onClick={() => setOpen(true)}>
         <span className="avatar"><Icon.Sparkle /></span>
-        <span><b>Describe your campaign</b><span className="muted"> and I'll rewrite the sentence for you, or keep editing it by hand.</span></span>
+        <span><b>Or draft it from a campaign brief.</b><span className="muted"> Describe the campaign and the sentence above is {hasRules(def) ? 'rewritten' : 'written'} for you.</span></span>
       </button>
     )
   }
@@ -136,8 +136,8 @@ export function BriefAssistant({ tx, def, onApply, session, onSession }: {
       <div className="assist-head">
         <span className="avatar"><Icon.Sparkle /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <b>Describe your campaign</b>
-          <div className="hint">I'll write it into the sentence below. You can then change any part by hand or tell me what to adjust.</div>
+          <b>Or draft it from a campaign brief</b>
+          <div className="hint">Describe the campaign in plain words and the sentence above is written for you. You can still change any part by hand, or tell me what to adjust.</div>
         </div>
         {turns.length > 0 && <button className="btn sm ghost" onClick={reset}>Start over</button>}
         {hasRules(def) && <button className="btn sm ghost" onClick={() => setOpen(false)} aria-label="Hide the brief box">Hide</button>}

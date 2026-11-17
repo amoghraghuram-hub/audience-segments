@@ -107,10 +107,8 @@ export function Builder({ tx, def, onChange, onBack, onSaveDraft, onContinue, br
           </div>
           <div>
             <h2>Define who's in this audience</h2>
-            <p className="muted" style={{ marginTop: 4 }}>Describe the campaign, write the sentence yourself, or do both. They build the same audience.</p>
+            <p className="muted" style={{ marginTop: 4 }}>The audience is written as one sentence. Click any part of it to change it.</p>
           </div>
-
-          {def.country === HOME_COUNTRY && <BriefAssistant tx={tx} def={def} onApply={onChange} session={brief} onSession={onBrief} />}
 
           <div className="card sentence-card">
             <Sentence tx={tx} def={def} onGeo={() => setGeoOpen(true)}
@@ -134,6 +132,8 @@ export function Builder({ tx, def, onChange, onBack, onSaveDraft, onContinue, br
               <b>Use with care.</b> {[...new Set(careful.map(f => f.flag.label))].join(', ')}: {careful.map(f => f.name).slice(0, 4).join(', ')}{careful.length > 4 ? ` and ${careful.length - 4} more` : ''}. {careful[0].flag.why}
             </div>
           )}
+
+          {def.country === HOME_COUNTRY && <BriefAssistant tx={tx} def={def} onApply={onChange} session={brief} onSession={onBrief} />}
         </section>
 
         <aside className="builder-right">

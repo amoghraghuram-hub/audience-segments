@@ -750,3 +750,6 @@ table.list tr.row:hover td { background: var(--color-hover); }
 .rail-theme button.on { background: var(--color-accent-surface-quarternary); color: var(--color-accent-primary); }
 .logo { border: 1px solid var(--color-border-medium); }
 @media (max-width: 900px) { .shell, .shell.pinned { grid-template-columns: 1fr; } .rail-slot { display: none; } }
+
+/* the brief box is the second, optional way in: it sits under the sentence, set apart from it */
+.builder-center .assist, .builder-center .assist-collapsed { margin-top: 6px; }
